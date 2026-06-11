@@ -2,6 +2,13 @@ const Expense = require("../models/Expense");
 const fs = require("fs");
 const path = require("path");
 
+const ExcelJS = require("exceljs");
+const { Resend } = require("resend");
+
+const resend = new Resend(
+  process.env.RESEND_API_KEY
+);
+
 // Create Expense
 const createExpense = async (req, res, next) => {
   try {
@@ -764,8 +771,6 @@ const exportExpensesPDF = async (
   }
 };
 
-const nodemailer = require("nodemailer");
-const ExcelJS = require("exceljs");
 
 const sendExpenseReport = async (
   req,
@@ -775,7 +780,7 @@ const sendExpenseReport = async (
   try {
 
     const { email } = req.body;
-    
+
     const emailRegex =
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -795,7 +800,8 @@ const sendExpenseReport = async (
     if (!expenses.length) {
       return res.status(404).json({
         success: false,
-        message: "No expenses found",
+        message:
+          "No expenses found",
       });
     }
 
@@ -835,17 +841,20 @@ const sendExpenseReport = async (
       },
     ];
 
-    expenses.forEach((expense) => {
-      worksheet.addRow({
-        title: expense.title,
-        amount: expense.amount,
-        category: expense.category,
-        description:
-          expense.description,
-        createdAt:
-          expense.createdAt,
-      });
-    });
+    expenses.forEach(
+      (expense) => {
+        worksheet.addRow({
+          title: expense.title,
+          amount: expense.amount,
+          category:
+            expense.category,
+          description:
+            expense.description,
+          createdAt:
+            expense.createdAt,
+        });
+      }
+    );
 
     const filePath = path.join(
       __dirname,
@@ -856,41 +865,25 @@ const sendExpenseReport = async (
       filePath
     );
 
-const transporter =
-  nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 587,
-    secure: false,
+    const attachment =
+      fs.readFileSync(
+        filePath
+      ).toString("base64");
 
-    auth: {
-      user:
-        process.env.EMAIL_USER,
-      pass:
-        process.env.EMAIL_PASS,
-    },
-
-    family: 4,
-  });
-
-  
-  await transporter.verify();
-
-console.log(
-  "SMTP Connection Successful"
-);
-
-    await transporter.sendMail({
+    await resend.emails.send({
       from:
-        process.env.EMAIL_USER,
+        "onboarding@resend.dev",
 
       to: email,
 
-      subject: "Expense Report",
+      subject:
+        "Expense Report",
 
       html: `
+        <h2>Expense Report</h2>
         <p>
           Please find the attached
-          expense report.
+          Excel report.
         </p>
       `,
 
@@ -899,7 +892,8 @@ console.log(
           filename:
             "expenses.xlsx",
 
-          path: filePath,
+          content:
+            attachment,
         },
       ],
     });
