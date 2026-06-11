@@ -1,7 +1,9 @@
 const Expense = require("../models/Expense");
+const fs = require("fs");
+const path = require("path");
 
 // Create Expense
-const createExpense = async (req, res) => {
+const createExpense = async (req, res, next) => {
   try {
     const { title, amount, category, description } =
       req.body;
@@ -19,15 +21,12 @@ const createExpense = async (req, res) => {
       data: expense,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+  next(error);
+}
 };
 
 // Get All Expenses
-const getExpenses = async (req, res) => {
+const getExpenses = async (req, res, next) => {
   try {
 
     const page = Number(req.query.page) || 1;
@@ -97,15 +96,12 @@ const getExpenses = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+  next(error);
+}
 };
 
 // Monthly Summary
-const getMonthlySummary = async (req, res) => {
+const getMonthlySummary = async (req, res, next) => {
   try {
 
     const summary = await Expense.aggregate([
@@ -182,15 +178,12 @@ const getMonthlySummary = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+  next(error);
+}
 };
 
 //getCategorySummary
-const getCategorySummary = async (req, res) => {
+const getCategorySummary = async (req, res, next) => {
   try {
 
     const summary = await Expense.aggregate([
@@ -236,17 +229,15 @@ const getCategorySummary = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+  next(error);
+}
 };
 
 //DateSummary
 const getDateRangeSummary = async (
   req,
-  res
+  res,
+  next
 ) => {
   try {
 
@@ -281,17 +272,15 @@ const getDateRangeSummary = async (
     });
 
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+  next(error);
+}
 };
 
 //5HighestExpenses
 const getTopExpenses = async (
   req,
-  res
+  res,
+  next
 ) => {
   try {
 
@@ -310,17 +299,15 @@ const getTopExpenses = async (
     });
 
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+  next(error);
+}
 };
 
 //Dashboard
 const getDashboard = async (
   req,
-  res
+  res,
+  next
 ) => {
   try {
 
@@ -367,33 +354,38 @@ const getDashboard = async (
     });
 
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+  next(error);
+}
 };
 
 
 // Update Expense for put
-const updateExpense = async (req, res) => {
+const updateExpense = async (req, res, next) => {
   try {
     const expense = await Expense.findById(req.params.id);
 
     if (!expense) {
-      return res.status(404).json({
-        success: false,
-        message: "Expense not found",
-      });
-    }
+
+  const error = new Error(
+    "Expense not found"
+  );
+
+  error.statusCode = 404;
+
+  return next(error);
+}
 
     // Check ownership
-    if (expense.mobNo !== req.user.mobNo) {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied",
-      });
-    }
+if (expense.mobNo !== req.user.mobNo) {
+
+  const error = new Error(
+    "Access denied"
+  );
+
+  error.statusCode = 403;
+
+  return next(error);
+}
 
     const updatedExpense = await Expense.findByIdAndUpdate(
       req.params.id,
@@ -410,31 +402,36 @@ const updateExpense = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+  next(error);
+}
 };
 
 // Delete Expense
-const deleteExpense = async (req, res) => {
+const deleteExpense = async (req, res, next) => {
   try {
     const expense = await Expense.findById(req.params.id);
 
     if (!expense) {
-      return res.status(404).json({
-        success: false,
-        message: "Expense not found",
-      });
-    }
 
-    if (expense.mobNo !== req.user.mobNo) {
-      return res.status(403).json({
-        success: false,
-        message: "Access denied",
-      });
-    }
+  const error = new Error(
+    "Expense not found"
+  );
+
+  error.statusCode = 404;
+
+  return next(error);
+}
+
+   if (expense.mobNo !== req.user.mobNo) {
+
+  const error = new Error(
+    "Access denied"
+  );
+
+  error.statusCode = 403;
+
+  return next(error);
+}
 
     await Expense.findByIdAndDelete(req.params.id);
 
@@ -444,15 +441,12 @@ const deleteExpense = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
-    });
-  }
+  next(error);
+}
 };
 
 // Expense Summary
-const getSummary = async (req, res) => {
+const getSummary = async (req, res, next) => {
   try {
 
     const expenses = await Expense.find({
@@ -482,10 +476,438 @@ const getSummary = async (req, res) => {
     });
 
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message,
+  next(error);
+}
+};
+
+const { Parser } = require("json2csv");
+
+const exportExpensesCSV = async (
+  req,
+  res,
+  next
+) => {
+  try {
+
+    const expenses =
+      await Expense.find({
+        mobNo: req.user.mobNo,
+      });
+
+    if (!expenses.length) {
+
+      const error = new Error(
+        "No expenses found"
+      );
+
+      error.statusCode = 404;
+
+      return next(error);
+    }
+
+    const fields = [
+      "title",
+      "amount",
+      "category",
+      "description",
+      "createdAt",
+    ];
+
+    const parser =
+      new Parser({
+        fields,
+      });
+
+    const csv =
+      parser.parse(expenses);
+
+    const uploadsDir =
+      path.join(
+        __dirname,
+        "../../uploads"
+      );
+
+    if (
+      !fs.existsSync(
+        uploadsDir
+      )
+    ) {
+      fs.mkdirSync(
+        uploadsDir,
+        {
+          recursive: true,
+        }
+      );
+    }
+
+    const fileName =
+      `expense-${req.user.mobNo}.csv`;
+
+    const filePath =
+      path.join(
+        uploadsDir,
+        fileName
+      );
+
+    fs.writeFileSync(
+      filePath,
+      csv
+    );
+
+    const fileUrl =
+      `${req.protocol}://${req.get("host")}/uploads/${fileName}`;
+
+    res.status(200).json({
+      success: true,
+      fileUrl,
     });
+
+  } catch (error) {
+
+    next(error);
+
+  }
+};
+
+const exportExpensesExcel = async (
+  req,
+  res,
+  next
+) => {
+  try {
+
+    const expenses =
+      await Expense.find({
+        mobNo: req.user.mobNo,
+      });
+
+    const workbook =
+      new ExcelJS.Workbook();
+
+    const worksheet =
+      workbook.addWorksheet(
+        "Expenses"
+      );
+
+    worksheet.columns = [
+      {
+        header: "Title",
+        key: "title",
+        width: 25,
+      },
+      {
+        header: "Amount",
+        key: "amount",
+        width: 15,
+      },
+      {
+        header: "Category",
+        key: "category",
+        width: 20,
+      },
+      {
+        header: "Description",
+        key: "description",
+        width: 30,
+      },
+      {
+        header: "Created At",
+        key: "createdAt",
+        width: 25,
+      },
+    ];
+
+    expenses.forEach((expense) => {
+      worksheet.addRow({
+        title: expense.title,
+        amount: expense.amount,
+        category: expense.category,
+        description:
+          expense.description,
+        createdAt:
+          expense.createdAt,
+      });
+    });
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    res.setHeader(
+      "Content-Disposition",
+      "attachment; filename=expenses.xlsx"
+    );
+
+const uploadsDir = path.join(
+  __dirname,
+  "../../uploads"
+);
+
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(
+    uploadsDir,
+    { recursive: true }
+  );
+}
+
+    const fileName =
+      `expense-${req.user.mobNo}.xlsx`;
+
+    const filePath = path.join(
+      uploadsDir,
+      fileName
+    );
+
+    await workbook.xlsx.writeFile(
+      filePath
+    );
+
+    const excelUrl =
+      `${req.protocol}://${req.get("host")}/uploads/${fileName}`;
+
+    res.status(200).json({
+      success: true,
+      excelUrl,
+    });
+
+  } catch (error) {
+  next(error);
+}
+};
+
+const exportExpensesPDF = async (
+  req,
+  res,
+  next
+) => {
+  try {
+
+    const expenses =
+      await Expense.find({
+        mobNo: req.user.mobNo,
+      });
+
+    const uploadsDir = path.join(
+      __dirname,
+      "../../uploads"
+    );
+
+    if (
+      !fs.existsSync(
+        uploadsDir
+      )
+    ) {
+      fs.mkdirSync(
+        uploadsDir
+      );
+    }
+
+    const fileName =
+  `expense-${req.user.mobNo}.pdf`;
+
+    const filePath = path.join(
+      uploadsDir,
+      fileName
+    );
+
+    const PDFDocument =
+      require("pdfkit");
+
+    const pdfDoc =
+      new PDFDocument();
+
+    const stream =
+      fs.createWriteStream(
+        filePath
+      );
+
+    pdfDoc.pipe(stream);
+
+    pdfDoc
+      .fontSize(18)
+      .text(
+        "Expense Report"
+      );
+
+    pdfDoc.moveDown();
+
+    expenses.forEach(
+      (expense) => {
+
+        pdfDoc.text(
+          `${expense.title} | ₹${expense.amount} | ${expense.category}`
+        );
+
+      }
+    );
+
+    pdfDoc.end();
+
+    stream.on(
+      "finish",
+      () => {
+
+        const pdfUrl =
+  `${req.protocol}://${req.get("host")}/uploads/${fileName}`;
+
+        res.status(200).json({
+          success: true,
+          pdfUrl,
+        });
+
+      }
+    );
+
+  } catch (error) {
+    next(error);
+  }
+};
+
+const nodemailer = require("nodemailer");
+const ExcelJS = require("exceljs");
+
+const sendExpenseReport = async (
+  req,
+  res,
+  next
+) => {
+  try {
+
+    const { email } = req.body;
+    
+    const emailRegex =
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Please provide a valid email address",
+      });
+    }
+
+    const expenses =
+      await Expense.find({
+        mobNo: req.user.mobNo,
+      });
+
+    if (!expenses.length) {
+      return res.status(404).json({
+        success: false,
+        message: "No expenses found",
+      });
+    }
+
+    const workbook =
+      new ExcelJS.Workbook();
+
+    const worksheet =
+      workbook.addWorksheet(
+        "Expenses"
+      );
+
+    worksheet.columns = [
+      {
+        header: "Title",
+        key: "title",
+        width: 25,
+      },
+      {
+        header: "Amount",
+        key: "amount",
+        width: 15,
+      },
+      {
+        header: "Category",
+        key: "category",
+        width: 20,
+      },
+      {
+        header: "Description",
+        key: "description",
+        width: 30,
+      },
+      {
+        header: "Created At",
+        key: "createdAt",
+        width: 25,
+      },
+    ];
+
+    expenses.forEach((expense) => {
+      worksheet.addRow({
+        title: expense.title,
+        amount: expense.amount,
+        category: expense.category,
+        description:
+          expense.description,
+        createdAt:
+          expense.createdAt,
+      });
+    });
+
+    const filePath = path.join(
+      __dirname,
+      "../../expenses.xlsx"
+    );
+
+    await workbook.xlsx.writeFile(
+      filePath
+    );
+
+    const transporter =
+      nodemailer.createTransport({
+        service: "gmail",
+
+        auth: {
+          user:
+            process.env.EMAIL_USER,
+
+          pass:
+            process.env.EMAIL_PASS,
+        },
+      });
+
+    await transporter.sendMail({
+      from:
+        process.env.EMAIL_USER,
+
+      to: email,
+
+      subject: "Expense Report",
+
+      html: `
+        <p>
+          Please find the attached
+          expense report.
+        </p>
+      `,
+
+      attachments: [
+        {
+          filename:
+            "expenses.xlsx",
+
+          path: filePath,
+        },
+      ],
+    });
+
+    if (
+      fs.existsSync(filePath)
+    ) {
+      fs.unlinkSync(filePath);
+    }
+
+    res.status(200).json({
+      success: true,
+      message:
+        "Expense report emailed successfully",
+    });
+
+  } catch (error) {
+    next(error);
   }
 };
 
@@ -500,4 +922,8 @@ module.exports = {
   getDateRangeSummary,
   getTopExpenses,
   getDashboard,
+  exportExpensesCSV,
+  exportExpensesExcel,
+  exportExpensesPDF,
+  sendExpenseReport,
 };

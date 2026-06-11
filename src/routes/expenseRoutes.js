@@ -11,6 +11,10 @@ const {
   getDateRangeSummary,
   getTopExpenses,
   getDashboard,
+  exportExpensesCSV,
+  exportExpensesExcel,
+  exportExpensesPDF,
+  sendExpenseReport,
 } = require("../controllers/expenseController");
 
 const protect = require("../middleware/authMiddleware");
@@ -211,6 +215,88 @@ router.get( "/top-expenses", protect, getTopExpenses );
  *         description: Dashboard statistics
  */
 router.get( "/dashboard", protect, getDashboard );
+
+/**
+ * @swagger
+ * /api/expenses/export/csv:
+ *   get:
+ *     summary: Export expenses as CSV
+ *     tags: [Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: CSV file downloaded successfully
+ */
+router.get( "/export/csv", protect, exportExpensesCSV );
+
+/**
+ * @swagger
+ * /api/expenses/export/excel:
+ *   get:
+ *     summary: Export expenses as Excel
+ *     tags: [Expenses]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get( "/export/excel", protect, exportExpensesExcel );
+
+/**
+ * @swagger
+ * /api/expenses/export/pdf:
+ *   get:
+ *     summary: Export expenses as PDF
+ *     tags: [Expenses]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get( "/export/pdf", protect, exportExpensesPDF );
+
+/**
+ * @swagger
+ * /api/expenses/email-report:
+ *   post:
+ *     summary: Send expense report as Excel attachment via email
+ *     tags: [Expenses]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - email
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 format: email
+ *                 example: "mohobiaprince31@gmail.com"
+ *     responses:
+ *       200:
+ *         description: Expense report emailed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Expense report emailed successfully
+ *       404:
+ *         description: No expenses found
+ *       400:
+ *         description: Invalid email address
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+router.post( "/email-report", protect, sendExpenseReport );
 
 /**
  * @swagger
