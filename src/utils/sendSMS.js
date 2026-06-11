@@ -7,23 +7,23 @@ const sendSMS = async (
   try {
 
     const response =
-      await axios.post(
+    await axios.post(
         "https://control.msg91.com/api/v5/otp",
         {
-          mobile: `91${mobile}`,
-          otp: otp,
-          template_id:
+        mobile: `91${mobile}`,
+        otp: otp,
+        template_id:
             process.env.MSG91_TEMPLATE_ID,
         },
         {
-          headers: {
+        headers: {
             authkey:
-              process.env.MSG91_API_KEY,
+            process.env.MSG91_API_KEY,
             "Content-Type":
-              "application/json",
-          },
+            "application/json",
+        },
         }
-      );
+    );
 
     console.log(
       "MSG91 Response:",
