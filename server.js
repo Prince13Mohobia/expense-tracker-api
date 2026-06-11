@@ -14,7 +14,11 @@ const swaggerSpecs = require("./src/config/swagger");
 const errorHandler = require(
   "./src/middleware/errorHandler"
 );
+const dns = require("dns");
 
+dns.setDefaultResultOrder(
+  "ipv4first"
+);
 const app = express();
 
 connectDB();
